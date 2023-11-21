@@ -7,5 +7,7 @@ WORK IN PROGRESS!
 
 ## Running 
 Set `/proc/sys/vm/mmap_min_addr` to 0
-```https://github.com/yasukata/zpoline```
+
+```sudo sh -c "echo 0 > /proc/sys/vm/mmap_min_addr"```
+
 ```LIBZPHOOK=./jmpman.so LD_PRELOAD=./libzpoline.so [program you wish to run]```
