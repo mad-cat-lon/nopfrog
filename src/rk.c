@@ -56,6 +56,7 @@ static long hook_function(long a1, long a2, long a3,
         }
         case 1: {
             // ssize_t write(int fd, const void *buf, size_
+            #ifdef
             printf("[-] write hooked!\n");
             #endif
             char path[256];
@@ -83,17 +84,18 @@ static long hook_function(long a1, long a2, long a3,
             }
             break;
         }
-        // case 3: {
-        //     // int close(int fd);
-        //     #ifdef DEBUG
-        //     printf("[-] close hooked!\n");
-        //     #endif
-        //     int fd;
-        //     char path[256];
-        //     fd = (int)a2;
-        //     fd_to_fname(fd, path, sizeof(path));
-        //     break;
-        // }
+        case 3: {
+            // int close(int fd);
+            #ifdef DEBUG
+            printf("[-] close hooked!\n");
+            #endif
+            int fd;
+            char path[256];
+            fd = (int)a2;
+            fd_to_fname(fd, path, sizeof(path));
+            if check()
+            break;
+        }
         case 5: {
             // int fstat(int fd, struct stat *statbuf);
             #ifdef DEBUG
