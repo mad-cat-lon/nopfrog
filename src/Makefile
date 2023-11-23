@@ -1,4 +1,4 @@
-PROGS = jmpman.so
+PROGS = nopfrog.so
 
 CC = gcc
 
