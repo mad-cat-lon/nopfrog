@@ -1,4 +1,0 @@
-[submodule "zpoline"]
-	path = zpoline
-	url = https://github.com/mad-cat-lon/zpoline
-	branch = master
