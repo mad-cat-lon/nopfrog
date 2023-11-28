@@ -10,7 +10,7 @@ Hooks `openat()` and `getdents64()` to hide files containing a magic string in t
     - Hooks `getdents64()` to hide processes with magic strings in their names from `ps`, `top`, etc.
     - Hooks `kill()` to prevent victim from terminating hidden procs
 - **Stealth**
-    - Filters rootkit shared objects from `ldd` output and `/proc/<pid>/maps`
+    - Filters rootkit shared objects from `ldd` output, `/proc/<pid>/maps` and `/proc/<pid>/smaps`
     - Backs up existing `/etc/ld.so.preload` file and serves fake one to user
 - **Anti-RE**
     - XORs out (most) sensitive strings and cleans memory
