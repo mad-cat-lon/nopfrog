@@ -1,4 +1,3 @@
-sudo apt install binutils-dev
 sudo make -C src/
 sudo make -C zpoline/
 cd src/
