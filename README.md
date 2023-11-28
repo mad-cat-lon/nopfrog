@@ -1,5 +1,5 @@
 # Description
-nopfrog is a simple LD_PRELOAD rootkit for x86_64 Linux that uses the binary rewriting method outlined in [zpoline](https://github.com/yasukata/zpoline). Unlike most other LD_PRELOAD rootkits that aim to hook the glibc syscall wrappers, nopfrog can intercept and modify **raw syscalls** from both statically and dynamically linked programs. 
+nopfrog is a simple LD_PRELOAD rootkti for x64 Linux that uses the binary rewriting method outlined in [zpoline](https://github.com/yasukata/zpoline) to exhaustively hook syscalls. Unlike most LD_PRELOAD rootkits that hook the glibc syscall wrappers and hope for the best, nopfrog can intercept and modify all raw syscalls from both statically and dynamically linked programs, without `ptrace`, changing the target's source, recompiling the kernel or inserting an LKM. 
  
 **WORK IN PROGRESS!**
 
@@ -25,7 +25,7 @@ Hooks `openat()` and `getdents64()` to hide files containing a magic string in t
 ## Installation 
 ```git clone --recursive https://github.com/mad-cat-lon/nopfrog```
 ```cd nopfrog``
-```./build.sh``
+```sudo ./easy_install.sh``
 
 ## Hooking a single program  
 Set `/proc/sys/vm/mmap_min_addr` to 0
