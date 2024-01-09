@@ -24,7 +24,7 @@ Hooks `openat()` and `getdents64()` to hide files containing a magic string in t
 
 ## Installation 
 ```git clone --recursive https://github.com/mad-cat-lon/nopfrog```
-```cd nopfrog``
+```cd nopfrog```
 ```sudo ./easy_install.sh``
 
 ## Hooking a single program  
